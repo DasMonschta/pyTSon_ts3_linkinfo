@@ -13,7 +13,7 @@ from pytsonui import *
 class Linkinfo(ts3plugin):
     name = "Linkinfo"
     requestAutoload = False
-    version = "1.0"
+    version = "1.0.1"
     apiVersion = 21
     author = "Luemmel"
     description = "Prints a Linkinfolink to the chat."
@@ -79,16 +79,23 @@ class Linkinfo(ts3plugin):
             (error, myid) = ts3.getClientID(schid)
 
             message = message.lower()
-
             # if url in message and not my message
-            if not myid == fromID and "[url]" in message or "[url=" in message:
+            if not myid == fromID and ("[url]" in message or "[url=" in message):
                 # check url
                 domain_whitelisted = False
                 for protocol in self.protocols:
                     if protocol+"://" in message:
                         domain_whitelisted = True
                 for domain in self.domains:
-                    if domain in message:
+                    if ("[url]http://"+domain or "[url]https://"+domain) in message:
+                        domain_whitelisted = True
+                    elif ("[url=http://"+domain or "[url=https://"+domain) in message:
+                        domain_whitelisted = True
+                    elif ("[url]http://www."+domain or "[url]https://www."+domain) in message:
+                        domain_whitelisted = True
+                    elif ("[url=http://www."+domain or "[url=https://www."+domain) in message:
+                        domain_whitelisted = True
+                    elif ("[url]www."+domain or "[url=www."+domain) in message:
                         domain_whitelisted = True
 
                 # if url not whitelisted
@@ -102,7 +109,7 @@ class Linkinfo(ts3plugin):
                         end = message.find("]")
                         message = message[start + 5:end]
 
-                    message = message + " -> [url=http://www.getlinkinfo.com/info?link=" + message + "]Linkinfo[/url]"
+                    message = "[[url=http://www.getlinkinfo.com/info?link=" + message + "]Linkinfo[/url]] "+message
 
                     if self.mode:
                         if targetMode == 1:
