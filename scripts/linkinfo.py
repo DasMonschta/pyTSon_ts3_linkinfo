@@ -87,15 +87,15 @@ class Linkinfo(ts3plugin):
                     if protocol+"://" in message:
                         domain_whitelisted = True
                 for domain in self.domains:
-                    if ("[url]http://"+domain or "[url]https://"+domain) in message:
+                    if "[url]http://"+domain in message or "[url]https://"+domain in message:
                         domain_whitelisted = True
-                    elif ("[url=http://"+domain or "[url=https://"+domain) in message:
+                    if "[url=http://"+domain in message or "[url=https://"+domain in message:
                         domain_whitelisted = True
-                    elif ("[url]http://www."+domain or "[url]https://www."+domain) in message:
+                    if "[url]http://www."+domain in message or "[url]https://www."+domain in message:
                         domain_whitelisted = True
-                    elif ("[url=http://www."+domain or "[url=https://www."+domain) in message:
+                    if "[url=http://www."+domain in message or "[url=https://www."+domain in message:
                         domain_whitelisted = True
-                    elif ("[url]www."+domain or "[url=www."+domain) in message:
+                    if "[url]www."+domain in message or "[url=www."+domain in message:
                         domain_whitelisted = True
 
                 # if url not whitelisted
