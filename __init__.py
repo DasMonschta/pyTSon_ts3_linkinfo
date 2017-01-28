@@ -1,13 +1,14 @@
 from ts3plugin import ts3plugin
-
-import ts3, ts3defines, os.path
-
-from ts3 import getPluginPath
-
+import ts3lib as ts3
+import ts3defines
+import os.path
 from os import path
 from PythonQt.QtSql import QSqlDatabase
 from PythonQt.QtGui import *
+from PythonQt.QtNetwork import QNetworkAccessManager, QNetworkRequest, QNetworkReply
 from pytsonui import *
+from traceback import format_exc
+import urllib
 
 
 class Linkinfo(ts3plugin):
@@ -22,35 +23,30 @@ class Linkinfo(ts3plugin):
     infoTitle = None
     hotkeys = []
     menuItems = [(ts3defines.PluginMenuType.PLUGIN_MENU_TYPE_GLOBAL, 0, "Linkinfo settings", "")]
-
-    directory = path.join(getPluginPath(), "pyTSon", "scripts", "linkinfo")
+    directory = path.join(ts3.getPluginPath(), "pyTSon", "scripts", "linkinfo")
     protocols = []
     domains = []
     status = True
     mode = False
+    wotapikey = "0629483a385ac7024ac9349f8a8b9067008c1fee"
 
     def __init__(self):
-        # Database connect
         self.db = QSqlDatabase.addDatabase("QSQLITE", "pyTSon_linkinfo")
         self.db.setDatabaseName(path.join(self.directory, "linkinfo.db"))
         if not self.db.isValid():
             raise Exception("Database invalid")
         if not self.db.open():
             raise Exception("Could not open database.")
-
         d = self.db.exec_("SELECT * FROM domains ORDER BY domain ASC")
         while d.next():
             self.domains.append(str(d.value("domain")))
-
         p = self.db.exec_("SELECT * FROM protocols ORDER BY protocol ASC")
         while p.next():
             self.protocols.append(str(p.value("protocol")))
-
         s = self.db.exec_("SELECT * FROM settings")
         if s.next():
             self.status = bool(s.value("status"))
             self.mode = bool(s.value("mode"))
-
         self.dlg = None
 
     def stop(self):
@@ -77,11 +73,8 @@ class Linkinfo(ts3plugin):
     def onTextMessageEvent(self, schid, targetMode, toID, fromID, fromName, fromUniqueIdentifier, message, ffIgnored):
         if self.status:
             (error, myid) = ts3.getClientID(schid)
-
             message = message.lower()
-            # if url in message and not my message
             if not myid == fromID and ("[url]" in message or "[url=" in message):
-                # check url
                 domain_whitelisted = False
                 for protocol in self.protocols:
                     if protocol+"://" in message:
@@ -97,8 +90,6 @@ class Linkinfo(ts3plugin):
                         domain_whitelisted = True
                     if "[url]www."+domain in message or "[url=www."+domain in message:
                         domain_whitelisted = True
-
-                # if url not whitelisted
                 if not domain_whitelisted:
                     start = message.find("[url]")
                     if not start == -1:
@@ -108,9 +99,8 @@ class Linkinfo(ts3plugin):
                         start = message.find("[url=")
                         end = message.find("]")
                         message = message[start + 5:end]
-
+                    self.getLinkInfo([message])
                     message = "[[url=http://www.getlinkinfo.com/info?link=" + message + "]Linkinfo[/url]] "+message
-
                     if self.mode:
                         if targetMode == 1:
                             ts3.requestSendPrivateTextMsg(schid, message, fromID)
@@ -120,12 +110,34 @@ class Linkinfo(ts3plugin):
                     else:
                         ts3.printMessageToCurrentTab(str(message))
 
+    def getLinkInfo(self, urls):
+        links = "/".join(urls)
+        print(links)
+
+        req = urllib2.Request(links, datagen, headers)
+        res = urllib2.urlopen(req)
+        finalurl = res.geturl()
+        ts3.printMessageToCurrentTab(str(finalurl))
+
+        url = "http://api.mywot.com/0.4/public_link_json2?hosts=%s&callback=process&key=%s" % (links,self.wotapikey)
+        ts3.logMessage('Requesting %s'%url, ts3defines.LogLevel.LogLevel_ERROR, "PyTSon Linkinfo Script", 0)
+        self.nwm = QNetworkAccessManager()
+        self.nwm.connect("finished(QNetworkReply*)", self.onNetworkReply)
+        self.nwm.get(QNetworkRequest(QUrl(url)))
+
+    def onNetworkReply(self, reply):
+        if reply.error() == QNetworkReply.NoError:
+            try:
+                response = reply.readAll().data().decode('utf-8')
+                ts3.printMessageToCurrentTab(response)
+            except:
+                ts3.printMessageToCurrentTab(format_exc())
 
 class SettingsDialog(QDialog):
     def __init__(self, linkinfo, parent=None):
         self.li = linkinfo
         super(QDialog, self).__init__(parent)
-        setupUi(self, os.path.join(ts3.getPluginPath(), "pyTSon", "ressources", "linkinfo", "linkinfo.ui"))
+        setupUi(self, os.path.join(ts3.getPluginPath(), "pyTSon", "scripts", "linkinfo", "linkinfo.ui"))
         self.setWindowTitle("Linkinfo by Luemmel")
         self.btn_add_domain.clicked.connect(self.add_domain)
         self.btn_remove_domain.clicked.connect(self.remove_domain)
@@ -134,7 +146,7 @@ class SettingsDialog(QDialog):
         self.cb_status.stateChanged.connect(self.toggle_status)
         self.cb_mode.stateChanged.connect(self.toggle_mode)
 
-        self.pixmap = QPixmap(os.path.join(ts3.getPluginPath(), "pyTSon", "ressources", "linkinfo", "luemmel.png"))
+        self.pixmap = QPixmap(os.path.join(ts3.getPluginPath(), "pyTSon", "scripts", "linkinfo", "luemmel.png"))
         self.pixmap.scaledToWidth(110)
         self.label_image.setPixmap(self.pixmap)
 
