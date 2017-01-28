@@ -28,7 +28,7 @@ class Linkinfo(ts3plugin):
     domains = []
     status = True
     mode = False
-    wotapikey = "0629483a385ac7024ac9349f8a8b9067008c1fee"
+
 
     def __init__(self):
         self.db = QSqlDatabase.addDatabase("QSQLITE", "pyTSon_linkinfo")
@@ -99,7 +99,6 @@ class Linkinfo(ts3plugin):
                         start = message.find("[url=")
                         end = message.find("]")
                         message = message[start + 5:end]
-                    self.getLinkInfo([message])
                     message = "[[url=http://www.getlinkinfo.com/info?link=" + message + "]Linkinfo[/url]] "+message
                     if self.mode:
                         if targetMode == 1:
@@ -109,29 +108,6 @@ class Linkinfo(ts3plugin):
                             ts3.requestSendChannelTextMsg(schid, message, mych)
                     else:
                         ts3.printMessageToCurrentTab(str(message))
-
-    def getLinkInfo(self, urls):
-        links = "/".join(urls)
-        print(links)
-
-        req = urllib2.Request(links, datagen, headers)
-        res = urllib2.urlopen(req)
-        finalurl = res.geturl()
-        ts3.printMessageToCurrentTab(str(finalurl))
-
-        url = "http://api.mywot.com/0.4/public_link_json2?hosts=%s&callback=process&key=%s" % (links,self.wotapikey)
-        ts3.logMessage('Requesting %s'%url, ts3defines.LogLevel.LogLevel_ERROR, "PyTSon Linkinfo Script", 0)
-        self.nwm = QNetworkAccessManager()
-        self.nwm.connect("finished(QNetworkReply*)", self.onNetworkReply)
-        self.nwm.get(QNetworkRequest(QUrl(url)))
-
-    def onNetworkReply(self, reply):
-        if reply.error() == QNetworkReply.NoError:
-            try:
-                response = reply.readAll().data().decode('utf-8')
-                ts3.printMessageToCurrentTab(response)
-            except:
-                ts3.printMessageToCurrentTab(format_exc())
 
 class SettingsDialog(QDialog):
     def __init__(self, linkinfo, parent=None):
